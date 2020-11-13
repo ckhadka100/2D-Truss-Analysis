@@ -1,0 +1,53 @@
+import tkinter as tk
+import numpy as np
+from numpy import *
+from numpy import random
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkinter import *
+
+root = tk.Tk()
+root.geometry("1000x1000")
+
+x = [0, 100.0, 100.0, 50.0, 0.0,  50.0]
+y = [0, 0.0,  0.0,  50.0, 0.0, 50.0]
+xx =[0, 1, 1, -1, -1, 0]
+yy = [0, -2, -2, -2, -2, 0]
+
+s = np.array_split(x, int(len(x)/2))
+ss = np.array_split(y, int(len(x)/2))
+xs = np.array_split(xx, int(len(xx)/2))
+yss = np.array_split(yy, int(len(yy)/2))
+
+s_array = np.array(s)
+ss_array = np.array(ss)
+
+xs_array = np.array(xs)
+yss_array = np.array(yss)
+print(s_array,"\n")
+print(ss_array,"\n")
+print(xs_array,"\n")
+print(yss_array,"\n")
+
+fig1 = Figure(figsize=(6, 4))  # creates a figure window
+a = fig1.add_subplot(111) # subplot is always needed
+circle2 = plt.Circle((100, -0.7), 0.7, color='black')
+
+for i in range(len(s_array)):
+    print(s_array[i])
+    print(ss_array[i])
+    a.plot(s_array[i], ss_array[i], label="Member "+str(i+1))
+    a.plot(xs_array[i], yss_array[i])
+    a.legend()
+    a.add_artist(circle2)
+
+canvas = FigureCanvasTkAgg(fig1, root)
+canvas.get_tk_widget().place(relwidth=1, relheight=1)
+canvas.draw()
+#fig.savefig("truss.png")
+plt.show()
+
+root.mainloop()
