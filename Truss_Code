@@ -1,0 +1,1250 @@
+import tkinter as tk  # import tkinter
+from tkinter import messagebox  # to show warning
+import numpy as np  # import numpy matlab like library
+import collections
+from tkinter import *
+from tkinter import ttk
+import matplotlib
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+matplotlib.use('TkAgg')
+
+
+# ---------------############# GETTING INPUT SECTION  ######################---------------------
+root = tk.Tk()
+
+root.title("TRUSS ANALYSIS SOFTWARECK9239")
+root.geometry("1920x1080+0+0")
+root.iconbitmap("CK.ico")
+
+# variables for joint data storing
+var = []
+var2 = []
+
+x_coor_temp_list = []
+y_coor_temp_list = []
+
+j_n_vec = []
+x_co_vec = []
+y_co_vec = []
+x_res_vec = []
+y_res_vec = []
+
+# variables for member data storing
+start_joint_temp_list = []
+end_joint_temp_list = []
+youngs_mod_temp_list = []
+cross_s_area_temp_list = []
+
+member = []
+start_joint = []
+end_joint = []
+youngs = []
+area = []
+
+# variables for force data storing
+var3 = []
+var4 = []
+
+force_joint_temp_list = []
+force_value_temp_list = []
+
+force_joint_number = []
+force_value = []
+force_on_x = []
+force_on_y = []
+
+
+def see_result():
+    for i in range(int(input_number_of_resolved_forces_entry.get())):
+        force_on_x.append(var3[i].get())
+        force_on_y.append(var4[i].get())
+    for force_joint_entry in force_joint_temp_list:
+        force_joint_number.append(force_joint_entry.get())
+    for force_value_entry in force_value_temp_list:
+        force_value.append(force_value_entry.get())
+
+    # entry stores as string - so convert to float
+    force_joint_number_temp = []
+    force_value_temp = []
+    force_on_x_temp = []
+    force_on_y_temp = []
+    for i in range(len(force_joint_number)):
+        force_joint_number_temp.append(float(force_joint_number[i]))
+        force_value_temp.append(float(force_value[i]))
+        force_on_x_temp.append(float(force_on_x[i]))
+        force_on_y_temp.append(float(force_on_y[i]))
+
+    global force_joint_number_array
+    global force_value_array
+    global force_on_x_array
+    global force_on_y_array
+    global temp_force_mat
+
+    force_joint_number_array = np.array(force_joint_number_temp)
+    force_value_array = np.array(force_value_temp)
+    force_on_x_array = np.array(force_on_x_temp)
+    force_on_y_array = np.array(force_on_y_temp)
+
+    print("Force is acting on Joint No. ", force_joint_number_array)
+    print("Force Value", force_value_array)
+    print("Force on X_axis", force_on_x_array)
+    print("Force on Y_axis", force_on_y_array)
+
+    # section to extract code numbers to the inputted force
+
+    c_no = np.array(split)  # code number per joint
+    print("c_no: code number tuple list: ", c_no)
+    f_mat_temp = np.vstack([force_joint_number_array, force_value_array, force_on_x_array, force_on_y_array])
+    f_mat = np.transpose(f_mat_temp)
+    print("f_mat: matrix of force properties", f_mat)
+    print("f_mat + f_mat ; ", f_mat + f_mat)
+    print("size of f_mat: ", f_mat.size)
+    print("shape of f_mat: ", f_mat.shape)
+
+    # testing that input forces are present
+    if f_mat.size == 0:
+        print("ERROR: NO Forces Inputted. ")
+
+    else:
+        a = f_mat[:, 0]
+        print(a)
+        print("Forces act on Joint No.: ", a)
+        dup_list = [item for item, count in collections.Counter(a).items() if count > 1]
+        non_dup_list = [item for item, count in collections.Counter(a).items() if count == 1]
+        print("dup_list: ", dup_list)
+        print("non_dup_list: ", non_dup_list)
+
+        dup_index = []
+
+        for i in range(len(dup_list)):  # 0 to 5
+            for j in range(len(a)):  # 0 to 2
+                while dup_list[i] == a[j]:
+                    dup_index.append(j)
+                    break
+
+        non_dup_index = []
+        for i in range(len(non_dup_list)):
+            for j in range(len(a)):
+                while non_dup_list[i] == a[j]:
+                    non_dup_index.append(j)
+                    break
+
+        print("dup_index: ", dup_index)
+        print("non_dup_index: ", non_dup_index)
+
+        # code to make sure that it works for any combination of forces
+
+        if len(non_dup_index) == 0 and len(dup_index) == 0:
+            print("Empty force vector.")
+
+        elif len(non_dup_index) > 0 and len(dup_index) == 0:
+            aso_vector_non_dup = []
+            for i in range(len(non_dup_index)):
+                aso_vec_non_dup = f_mat[non_dup_index[i]]
+                aso_vector_non_dup.append(aso_vec_non_dup)
+            print("aso_vector_non_dup: ", aso_vector_non_dup)
+            B = np.array(aso_vector_non_dup)
+
+            force_non_dup_temp = []
+            for i in range(len(B)):
+                if B[i, 2] == 1:
+                    force_non_dup_temp.append(B[i, 1])
+                    force_non_dup_temp.append(c_no[int(B[i, 0] - 1), 0])  # int is used to convert float to integer
+                                                                    # because float cannot be used to call an index
+                    print("Code_number for force " + str(B[i, 1]) + " is: ", c_no[int(B[i, 0] - 1), 0])
+                else:
+                    force_non_dup_temp.append(B[i, 1])
+                    force_non_dup_temp.append(c_no[int(B[i, 0] - 1), 1])
+                    print("Code_number for force " + str(B[i, 1]) + " is: ", c_no[int(B[i, 0] - 1), 1])
+            print(force_non_dup_temp)
+            non_dup_split = np.array_split(force_non_dup_temp, len(non_dup_index))
+            print("non_dup_split: ", non_dup_split)
+
+            force_temp_vec = np.array(non_dup_split)  # must is to convert to numpy array for operations
+            print("force_temp_vec: \n", force_temp_vec)
+
+            force_vector_size = np.array(range(1, NDOF + 1))
+            print(force_vector_size)
+
+            temp_force_mat = np.zeros([len(force_vector_size), 2])
+
+            temp_force_mat[:, 1] = force_vector_size
+            print(temp_force_mat)
+
+            for i in range(len(force_vector_size)):
+                l = len(force_temp_vec)
+                for j in range(l):
+                    while force_temp_vec[j, 1] == i + 1:  # while loop and break are the best lol
+                        temp_force_mat[i, 0] = force_temp_vec[j, 0]
+                        break
+            print("temp_force_mat:\n", temp_force_mat)
+
+        elif len(non_dup_index) == 0 and len(dup_index) > 0:
+            aso_vector_dup = []
+            for i in range(len(dup_index)):
+                aso_vec = f_mat[dup_index[i]]
+                aso_vector_dup.append(aso_vec)
+            print("aso_vector_dup: ", aso_vector_dup)
+            A = np.array(aso_vector_dup)
+            print("A: ", A)
+            print(len(A))
+
+            force_dup_temp = []
+            for i in range(len(A)):
+                if A[i, 2] == 1:
+                    force_dup_temp.append(A[i, 1])
+                    force_dup_temp.append(c_no[int(A[i, 0] - 1), 0])
+                    print("Code_number for force " + str(A[i, 1]) + " is: ", c_no[int(A[i, 0] - 1), 0])
+                else:
+                    force_dup_temp.append(A[i, 1])
+                    force_dup_temp.append(c_no[int(A[i, 0] - 1), 1])
+                    print("Code_number force " + str(A[i, 1]) + " is: ", c_no[int(A[i, 0] - 1), 1])
+            print(force_dup_temp)
+            dup_split = np.array_split(force_dup_temp, len(dup_index))
+            print("dup_split: ", dup_split)
+
+            force_temp_vec = np.array(dup_split)
+            print("force_temp_vec: \n", force_temp_vec)
+
+            force_vector_size = np.array(range(1, NDOF + 1))
+            print(force_vector_size)
+
+            temp_force_mat = np.zeros([len(force_vector_size), 2])
+
+            temp_force_mat[:, 1] = force_vector_size
+            print(temp_force_mat)
+
+            for i in range(len(force_vector_size)):
+                l = len(force_temp_vec)
+                for j in range(l):
+                    while force_temp_vec[j, 1] == i + 1:  # while loop and break are the best lol
+                        temp_force_mat[i, 0] = force_temp_vec[j, 0]
+                        break
+            print("temp_force_mat:\n", temp_force_mat)
+
+        elif len(non_dup_index) > 0 and len(dup_index) > 0:
+            aso_vector_dup = []
+            for i in range(len(dup_index)):
+                aso_vec = f_mat[dup_index[i]]
+                aso_vector_dup.append(aso_vec)
+            print("aso_vector_dup: ", aso_vector_dup)
+            A = np.array(aso_vector_dup)
+            print("A: ", A)
+            print(len(A))
+
+            aso_vector_non_dup = []
+            for i in range(len(non_dup_index)):
+                aso_vec_non_dup = f_mat[non_dup_index[i]]
+                aso_vector_non_dup.append(aso_vec_non_dup)
+            print("aso_vector_non_dup: ", aso_vector_non_dup)
+            B = np.array(aso_vector_non_dup)
+
+            force_dup_temp = []
+            for i in range(len(A)):
+                if A[i, 2] == 1:
+                    force_dup_temp.append(A[i, 1])
+                    force_dup_temp.append(c_no[int(A[i, 0] - 1), 0])
+                    print("Code_number for force " + str(A[i, 1]) + " is: ", c_no[int(A[i, 0] - 1), 0])
+                else:
+                    force_dup_temp.append(A[i, 1])
+                    force_dup_temp.append(c_no[int(A[i, 0] - 1), 1])
+                    print("Code_number force " + str(A[i, 1]) + " is: ", c_no[int(A[i, 0] - 1), 1])
+            print(force_dup_temp)
+            dup_split = np.array_split(force_dup_temp, len(dup_index))
+            print("dup_split: ", dup_split)
+
+            force_non_dup_temp = []
+            for i in range(len(B)):
+                if B[i, 2] == 1:
+                    force_non_dup_temp.append(B[i, 1])
+                    force_non_dup_temp.append(c_no[int(B[i, 0] - 1), 0])
+                    print("Code_number for force " + str(B[i, 1]) + " is: ", c_no[int(B[i, 0] - 1), 0])
+                else:
+                    force_non_dup_temp.append(B[i, 1])
+                    force_non_dup_temp.append(c_no[int(B[i, 0] - 1), 1])
+                    print("Code_number for force " + str(B[i, 1]) + " is: ", c_no[int(B[i, 0] - 1), 1])
+            print(force_non_dup_temp)
+            non_dup_split = np.array_split(force_non_dup_temp, len(non_dup_index))
+            print("non_dup_split: ", non_dup_split)
+
+            force_temp_vec = np.vstack([dup_split, non_dup_split])
+            print("force_temp_vec: \n", force_temp_vec)
+
+            force_vector_size = np.array(range(1, NDOF + 1))
+            print(force_vector_size)
+
+            temp_force_mat = np.zeros([len(force_vector_size), 2])
+
+            temp_force_mat[:,
+            1] = force_vector_size # temp_force_mat is the needed external force vector with proper code numbers as well.
+            print(temp_force_mat)
+
+            for i in range(len(force_vector_size)):
+                l = len(force_temp_vec)
+                for j in range(l):
+                    while force_temp_vec[j, 1] == i + 1:  # while loop and break are the best lol
+                        temp_force_mat[i, 0] = force_temp_vec[j, 0]
+                        break
+            print("temp_force_mat:\n", temp_force_mat)
+
+        K_cell_final = np.zeros([int(input_number_of_members_entry.get()), 5, 5])
+        T_matrix = np.zeros([int(input_number_of_members_entry.get()), 4, 4])
+        K_multiplier_matrix = np.array([[1, 0, -1, 0], [0, 0, 0, 0], [-1, 0, 1, 0], [0, 0, 0, 0]])
+        print(K_multiplier_matrix)
+
+        member_cn_mat = np.zeros([int(input_number_of_members_entry.get()), 4])
+        for i in range(int(input_number_of_members_entry.get())):
+            print("Member:", i, "Properties.\n")
+            ends_at = int(end_joint_array[i])
+            starts_at = int(start_joint_array[i])
+            print("Member ", str(i + 1), " starts_at ", starts_at)
+            print("Member ", str(i + 1), " ends_at ", ends_at)
+            X_2 = X_coordinate_array[ends_at - 1]
+            X_1 = X_coordinate_array[starts_at - 1]
+            Y_2 = Y_coordinate_array[ends_at - 1]
+            Y_1 = Y_coordinate_array[starts_at - 1]
+            Length = member_length_array[i]
+            cos_theta = (X_2 - X_1) / (Length)
+            sin_theta = (Y_2 - Y_1) / (Length)
+            print("Cx of Member ", str(i + 1), " is: ", cos_theta)
+            print("Cy of Member ", str(i + 1), " is: ", sin_theta)
+            print("Length of Member ", str(i + 1), " is: ", Length)
+            A = np.array([split[starts_at - 1], split[ends_at - 1]])  # will give tuples of code numbers
+
+            # converting tuple of code numbers to list of code numbers
+            s = A.shape
+            Code_num_i = []
+            for j in range(s[0]):
+                for k in range(s[1]):
+                    Code_num_i.append(A[j, k])
+            print(
+                "The code numbers of Member " + str(i + 1) + " starting at " + str(starts_at) + " and ending at " + str(
+                    ends_at), " is: ", Code_num_i)
+
+            member_cn_mat[i, :] = Code_num_i
+
+            # transformation _matrix (matrix part only , no in-front scalar part here)
+            T_matrix[i] = np.array([[cos_theta, sin_theta, 0, 0],
+                          [-sin_theta, cos_theta, 0, 0],
+                          [0, 0, cos_theta, sin_theta],
+                          [0, 0, -sin_theta, cos_theta]])
+            print("T without scalar is: \n", T_matrix[i])
+            K_early = np.array([youngs_array[i] * area_array[i] / Length * K_multiplier_matrix])
+            K_final = np.matmul(np.transpose(T_matrix[i]), np.matmul(K_early, T_matrix[i]))
+
+            ## arranging the values into member stiffness matrix
+            K_cell_final[i, 0, 1:] = Code_num_i
+            K_cell_final[i, 1:, 0] = Code_num_i
+            K_cell_final[i, 1:, 1:] = K_final
+        print("Member_cn_matrix is: \n", member_cn_mat)
+        print("T_matrix is\n", T_matrix)
+        print("K_cell_final is\n", K_cell_final)
+
+        ### Extract code numbered elements from member stiffness matrix
+
+        global Structure
+        Structure = np.zeros([NDOF, NDOF])
+
+        for i in range(NDOF):
+            for j in range(NDOF):
+                s_temp = []
+                for k in range(int(input_number_of_members_entry.get())):
+                    exists_in_row_code = i + 1 in K_cell_final[k, :, 0]
+                    exists_in_column_code = j + 1 in K_cell_final[k, 0, :]
+                    if (exists_in_row_code == True) and (exists_in_column_code == True):
+                        r_early_list = list(K_cell_final[k, :, 0])
+                        r_early = r_early_list.index(i + 1)
+                        # find code num column index
+                        c_early_list = list(K_cell_final[k, 0, :])
+                        c_early = c_early_list.index(j + 1)
+                        # extracting the stiffness elements
+                        s = K_cell_final[k, r_early, c_early]
+                    else:
+                        s = 0
+                    s_temp.append(s)
+                Structure[i, j] = sum(s_temp)
+                #print(Structure)
+
+        print("Structure Stiffness Matrix is: \n", Structure)
+
+        print("External Load Vector is: \n", temp_force_mat[:, 0])
+
+        ## Great we made it so far
+        ## Now compute 'd' vector
+        d = np.matmul(np.linalg.inv(Structure), temp_force_mat[:, 0])
+
+        joint_number = np.array(range(1, NDOF + 1))
+        disp_no_t = np.vstack([d, joint_number])
+        global disp
+        disp = np.transpose(disp_no_t)
+        print("disp:\n", disp)
+        global disp_2
+        disp_2 = np.zeros([int(input_number_of_joints_entry.get()), 3])
+        j_num = list(range(1, 1 + int(input_number_of_joints_entry.get())))
+
+        disp_2[:, 0] = j_num
+        print("Split is: ", split)
+        print("np.array : ", np.array(split))
+        np_split = np.array(split)
+        for v in range(int(input_number_of_joints_entry.get())):
+            print("Code num for member " + str(v) + " is" + str(np_split[v]))
+            for w in range(2):
+                if int(np_split[v, w]) in disp[:, 1]:
+                    listd = np.ndarray.tolist(disp[:,1])
+                    print("listd", listd)
+                    print("np_split[v,w]=", np_split[v,w])
+                    indexer = listd.index(np_split[v,w])
+                    disp_2[v, 1 + w] = disp[indexer, 0]
+
+        disp_2 = np.round(disp_2, 8)
+        print("disp_vector_per_joint:\n", disp_2)
+
+    ## Now compute Axial Force Vector
+
+    v = np.zeros([int(input_number_of_members_entry.get()), 4])
+    for ii in range(int(input_number_of_members_entry.get())): # ii=3
+        for kk in range(len(disp)): #3
+            if int(disp[kk,1]) in member_cn_mat[ii,:]:
+                lister = np.ndarray.tolist(member_cn_mat[ii])  # to convert nparray to list
+                v[ii, lister.index(int(disp[kk,1]))] = disp[kk,0]
+
+    print("disp_vector_per_member:\n", v)
+
+    # Member end force = F = K x v, Q =
+    F = np.zeros([int(input_number_of_members_entry.get()), 4])
+    Q = np.zeros([int(input_number_of_members_entry.get()), 4])
+    for i in range(int(input_number_of_members_entry.get())):
+        F[i] = np.matmul(K_cell_final[i, 1:, 1:], v[i])
+        Q[i] = np.matmul(T_matrix[i], F[i])
+    print("Member End Force Vector: \n", F)
+    print("Axial Force Vector: \n", Q)
+
+    # organizing axial force vector into member-wise compression, tension designation
+    axial_vec = []
+    for i in range(len(Q)):
+        # for j in range(2):
+        if round(Q[i, 0], 5) == 0 and round(Q[i, 1], 5) == 0:
+            axial_vec.append(0)
+            axial_vec.append(str("No Force"))
+        elif round(Q[i, 0], 2) != 0:
+            if Q[i, 0] > 0:
+                axial_vec.append(round(abs(Q[i, 0]), 6))
+                axial_vec.append(str("Compression"))
+            elif Q[i, 0] < 0:
+                axial_vec.append(round(abs(Q[i, 0]), 6))
+                axial_vec.append(str("Tension"))
+        elif round(Q[i, 1], 2) != 0:
+            if Q[i, 0] > 0:
+                axial_vec.append(round(abs(Q[i, 0]), 6))
+                axial_vec.append(str("Compression"))
+            elif Q[i, 0] < 0:
+                axial_vec.append(round(abs(Q[i, 0]), 6))
+                axial_vec.append(str("Tension"))
+    print("axial_vec: \n", axial_vec)
+    axial_arranged = []
+    n = []
+    v = []
+    b = []
+    for i in range(nom):
+        n.append(int(i+1))
+        v.append(axial_vec[2*i])
+        b.append(axial_vec[2*i+1])
+    axial_arranged_not = np.vstack([n,v,b])
+    axial_arranged = np.transpose(axial_arranged_not)
+    print("axial_arranged:\n", axial_arranged)
+
+
+    # find reaction forces
+    R = np.zeros([int(input_number_of_members_entry.get()), 2, 4])
+    for i in range(int(input_number_of_members_entry.get())):
+        # appending code numbers to the member forces
+        R[i] = np.vstack([member_cn_mat[i], F[i]])
+
+    print("Member end Force vector per member with code numbers is(Pre_R vector:\n", R)
+
+    max_res_cn = max(B_array)
+    min_res_cn = NDOF + 1
+
+    R_temp = []
+    for i in range(min_res_cn, max_res_cn+1): # 4 to 7 [4, 5, 6]
+        summa=0
+        for j in range(int(input_number_of_members_entry.get())):
+            if i in R[j,0]:
+                listR = np.ndarray.tolist(R[j,0])
+                print("ListR is:\n",  listR)
+                indexR = listR.index(int(i))
+                summa = summa + R[j,1, indexR]
+                print("Sum is:\n", summa)
+        R_temp.append(i)
+        R_temp.append(summa)
+    print("R final vector is:\n", R_temp)
+
+    # organizing reaction vector into appropriate display output window
+    # if c_no any value is greater than NDOF take that joint number
+
+    #reaction_arranged = np.zeros([])
+    nrm = []
+    for i in range(len(c_no)):
+        for j in range(2):
+            if c_no[i,j] > NDOF:
+                nrm.append(i+1)
+    print("nrm:\n", nrm)
+    R_split = np.array_split(R_temp, len(R_temp) / 2)
+    R_split = np.array(R_split)
+    print("R_split is:\n", R_split)
+    rv = R_split[:,1]
+    R_partial = np.transpose(np.vstack([nrm, rv]))
+    print("reaction arranged partial:\n", R_partial)
+
+    r_temper = []
+
+    for i in range(int(len(R_split))):
+        for j in range(noj):
+            if R_split[i,0] in np_split[j]:
+                if R_split[i,0] == np_split[j,0]:
+                    r_temper.append(round(R_split[i,1],6))
+                else:
+                    r_temper.append(0)
+                if R_split[i,0] == np_split[j,1]:
+                    r_temper.append(round(R_split[i,1],6))
+                else:
+                    r_temper.append(0)
+    print("r_temper;\n", r_temper)
+
+    r_divided = np.array(np.array_split(r_temper, len(r_temper)/2))
+    print("R_partial:\n", R_partial)
+    print("r_divided:\n", r_divided)
+
+    pre_R_arranged = []
+    i = 0
+    c_no = np.ndarray.tolist(c_no)
+    for clist in c_no:
+        if clist[0] > NDOF and clist[1] > NDOF:
+            pre_R_arranged.append(c_no.index(clist)+1)
+            pre_R_arranged.append(r_divided[i,0])
+            print("Reaction present on joint "+str(c_no.index(clist)+1)+".")
+            pre_R_arranged.append(r_divided[i+1,1])
+            i = i +2
+        elif clist[0] > NDOF and not clist[1] > NDOF:
+            pre_R_arranged.append(c_no.index(clist)+1)
+            pre_R_arranged.append(r_divided[i,0])
+            pre_R_arranged.append(0)
+            i = i+1
+        elif not clist[0] > NDOF and clist[1]>NDOF:
+            pre_R_arranged.append(c_no.index(clist)+1)
+            pre_R_arranged.append(0)
+            pre_R_arranged.append(r_divided[i,1])
+            i = i +1
+
+    R_arranged = np.array(np.array_split(pre_R_arranged, len(pre_R_arranged)/3))
+    print("Final R_arranged list is:", R_arranged) # great made it this far
+
+
+
+    # make an analyze output analyzed data window ________________________________#####################
+
+    # displaying output data
+
+    open_new_4_window = tk.Toplevel()
+    open_new_4_window.title("Analysis Result Output")
+    open_new_4_window.geometry("1920x1080+0+0")
+    open_new_4_window.iconbitmap("CK.ico")
+    canvas_4_1 = tk.Canvas(open_new_4_window, bg="#f7feff")
+    canvas_4_1.place(relwidth=1, relheight=1, relx=0, rely=0, anchor="nw")
+    title_label = tk.Label(open_new_4_window, text="TRUSS ANALYSIS RESULTS", font=("Arial black", 25, "bold"), fg="white", bg="#0c043d")
+    title_label.place(relwidth=1, relheight=0.1, relx=0, rely=0)
+
+    # creating menus to show results and then link each menus to data
+    # create menu for joint displacements, axial force, reaction forces
+    top_menu = tk.Menu(open_new_4_window)
+    open_new_4_window.config(menu=top_menu)
+
+    # add commands to each menu items
+    # show table on each result menu commands
+    # we have to make a treeview
+    def displacement_result():
+        disp_tree = ttk.Treeview(open_new_4_window)
+        disp_tree["columns"] = ("Joint Number", "X-displacement", "Y-displacement")
+        # formatting columns
+        disp_tree.column("#0", width=0, stretch="no")  # does not work without the phantom column
+                                                        # add stretch to define stretching width
+        disp_tree.column("Joint Number", anchor="center", width=120)
+        disp_tree.column("X-displacement", anchor="center", width=120)
+        disp_tree.column("Y-displacement", anchor="center", width=120)
+        # create headings
+        disp_tree.heading("#0", text="", anchor="w")
+        disp_tree.heading("Joint Number", text="Joint Number", anchor="center")
+        disp_tree.heading("X-displacement", text="X-displacement ("+str(input_length_unit_label_entry.get())+")", anchor="center")
+        disp_tree.heading("Y-displacement", text="Y-displacement ("+str(input_length_unit_label_entry.get())+")", anchor="center")
+        # add data
+        for row in range(len(disp_2)):
+            disp_tree.insert(parent="", index="end", iid=row, text="", value=(int(disp_2[row,0]), disp_2[row,1], disp_2[row,2]))
+        disp_tree.place(relwidth=0.3, relheight=0.7, relx=0, rely=0)
+
+    def axial_force_result():
+        axial_tree = ttk.Treeview(open_new_4_window)
+        axial_tree["columns"] = ("Member Number", "Axial Force", "Behavior")
+        # formatting columns
+        axial_tree.column("#0", width=0,
+                         stretch="no")  # does not work without the phantom column# add stretch to define stretching width
+        axial_tree.column("Member Number", anchor="center", width=120)
+        axial_tree.column("Axial Force", anchor="center", width=120)
+        axial_tree.column("Behavior", anchor="center", width=120)
+        # create headings
+        axial_tree.heading("#0", text="", anchor="w")
+        axial_tree.heading("Member Number", text="Member Number", anchor="center")
+        axial_tree.heading("Axial Force", text="Axial Force (" + str(input_force_unit_label_entry.get()) + ")",
+                          anchor="center")
+        axial_tree.heading("Behavior", text="Behavior",
+                          anchor="center")
+        # add data
+        for row in range(nom):
+            axial_tree.insert(parent="", index="end", iid=row, text="",
+                             value=(axial_arranged[row, 0], axial_arranged[row, 1], axial_arranged[row, 2]))
+        axial_tree.place(relwidth=0.3, relheight=0.7, relx=0.35, rely=0)
+
+    def reaction_force_result():
+        reaction_tree = ttk.Treeview(open_new_4_window)
+        reaction_tree["columns"] = ("Joint Number", "Reaction X-Axis", "Reaction Y-Axis")
+        # formatting columns
+        reaction_tree.column("#0", width=0, stretch="no")
+        reaction_tree.column("Joint Number", anchor="center", width=120)
+        reaction_tree.column("Reaction X-Axis", anchor="center", width=120)
+        reaction_tree.column("Reaction Y-Axis", anchor="center", width=120)
+        # create headings
+        reaction_tree.heading("#0", text="", anchor="w")
+        reaction_tree.heading("Joint Number", text="Joint Number", anchor="center")
+        reaction_tree.heading("Reaction X-Axis", text="Reaction X-Axis ("+str(input_force_unit_label_entry.get())+")",
+                              anchor="center")
+        reaction_tree.heading("Reaction Y-Axis", text="Reaction Y-Axis ("+str(input_force_unit_label_entry.get())+")",
+                              anchor="center")
+        # add data to tree view
+        for row in R_arranged:
+            reaction_tree.insert(parent="", index="end", iid=row, text="", value=(row[0],row[1], row[2]))
+        reaction_tree.place(relwidth=0.3, relheight=0.7, relx=0.70, rely=0)
+
+
+    # putting items on menus
+    top_menu.add_command(label="   Joint Displacements   ", command=displacement_result) # command needed
+    top_menu.add_command(label="   Member Axial Forces   ", command=axial_force_result) # command needed
+    top_menu.add_command(label="     Reaction Forces     ", command=reaction_force_result) # command needed
+
+    # plotting to the pyplot using line function
+    x_coordinate_fig = []
+    y_coordinate_fig = []
+    for i in range(int(input_number_of_members_entry.get())):
+        ends_at = int(end_joint_array[i])
+        starts_at = int(start_joint_array[i])
+
+        X_1 = X_coordinate_array[starts_at - 1]
+        X_2 = X_coordinate_array[ends_at - 1]
+        Y_1 = Y_coordinate_array[starts_at - 1]
+        Y_2 = Y_coordinate_array[ends_at - 1]
+        x_coordinate_fig.append(X_1)
+        x_coordinate_fig.append(X_2)
+        y_coordinate_fig.append(Y_1)
+        y_coordinate_fig.append(Y_2)
+
+    print(x_coordinate_fig)
+    print(y_coordinate_fig)
+
+    lx = np.array_split(x_coordinate_fig, int(len(x_coordinate_fig) / 2))
+    ly = np.array_split(y_coordinate_fig, int(len(y_coordinate_fig) / 2))
+    lx_array = np.array(lx)
+    print("lx_array is:", lx_array)
+    ly_array = np.array(ly)
+
+    # add displacements to coordinates
+
+    fig = Figure(figsize=(6, 4))  # creates a figure window
+    f = fig.add_subplot(111)  # subplot is always needed
+
+
+    # putting member text label near member lines
+    const_jm = member_length_array[0] * 0.05
+    text_member = []
+    for member in member_array:
+        text_member.append("Member "+str(member))
+    print("text_member: ", text_member)
+
+    for i in range(len(text_member)):
+        x_dat_start = X_coordinate_array[int(start_joint_array[i])-1]
+        x_dat_end = X_coordinate_array[int(end_joint_array[i])-1]
+        y_dat_start = Y_coordinate_array[int(start_joint_array[i])-1]
+        y_dat_end = Y_coordinate_array[int(end_joint_array[i])-1]
+        f.text((x_dat_start+x_dat_end-0.2*const_jm)/2, (y_dat_start+y_dat_end-1.5*const_jm)/2, text_member[i])
+
+    # putting joint text label near joints
+    text_joint = []
+    for joint in Joint_array:
+        text_joint.append("Joint "+str(joint))
+    print("text_joint: ", text_joint)
+
+    for i in range(len(Joint_array)):
+        x_dat = X_coordinate_array[i]
+        y_dat = Y_coordinate_array[i]
+        f.text(x_dat-0.2*const_jm, y_dat-0.5*const_jm, text_joint[i])
+
+    # adding joint displacements and create new coordinates
+    d_mult = 150 # displacement multiplier (to make viewable displacements) # can add a slider button too
+    new_x = X_coordinate_array + d_mult*disp_2[:,1]
+    new_y = Y_coordinate_array + d_mult*disp_2[:,2]
+    print("new_x", new_x)
+    print("new_y", new_y)
+
+    x_new_fig = []
+    y_new_fig = []
+    for i in range(nom):
+        ends_at = int(end_joint_array[i])
+        starts_at = int(start_joint_array[i])
+
+        X_1 = new_x[starts_at - 1]
+        X_2 = new_x[ends_at - 1]
+        Y_1 = new_y[starts_at - 1]
+        Y_2 = new_y[ends_at - 1]
+        x_new_fig.append(X_1)
+        x_new_fig.append(X_2)
+        y_new_fig.append(Y_1)
+        y_new_fig.append(Y_2)
+
+    print("x_new_fig: ", x_new_fig)
+    print("y_new_fig: ", y_new_fig)
+
+    lx_new = np.array_split(x_new_fig, int(len(x_new_fig) / 2))
+    ly_new = np.array_split(y_new_fig, int(len(y_new_fig) / 2))
+    lx_new_array = np.array(lx_new)
+    print("lx_new_array is:", lx_new_array)
+    ly_new_array = np.array(ly_new)
+    print("ly_new_array is:", ly_new_array)
+
+
+
+    # plotting for legends only
+    f.plot(lx_array[1], ly_array[1], "b-")
+    f.plot(lx_array[1], ly_array[i], "k--")
+    f.legend(["Original Shape", "Deformed Shape"], loc=0)
+
+    # plotting original shape member lines
+    const = member_length_array[0] * 0.016
+    for i in range(len(lx_array)):
+        f.plot(lx_array[i], ly_array[i], "b-") # plots in blue solid lines
+
+    # plotting deformed shape member lines
+    for i in range(len(lx_new_array)):
+        f.plot(lx_new_array[i], ly_new_array[i], "k--") # k-- for black dashed line
+
+    # extracting the restraint codes for joints with reactions to plot roller and hinge support
+    for ii in range(int(input_number_of_joints_entry.get())):
+        temp_x = X_coordinate_array[ii]
+        temp_y = Y_coordinate_array[ii]
+        if X_restraint_array[ii] == 0 and Y_restraint_array[ii] == 0:
+            print("No joints here: \n")
+        elif X_restraint_array[ii] == 1 and Y_restraint_array[ii] == 1:
+            a = [temp_x, temp_x + const, temp_x + const, temp_x - const, temp_x - const, temp_x]
+            print(a)
+            b = [temp_y, temp_y - const, temp_y - const, temp_y - const, temp_y - const, temp_y]
+            print(b)
+            ax = np.array_split(a, int(len(a) / 2))
+            by = np.array_split(b, int(len(b) / 2))
+            ax_arr = np.array(ax)
+            by_arr = np.array(by)
+            for jj in range(len(ax_arr)):
+                f.plot(ax_arr[jj], by_arr[jj])
+        elif X_restraint_array[ii] == 1 and Y_restraint_array[ii] == 0:
+            circ = plt.Circle((temp_x, temp_y - 0.75 * const), 0.75 * const, color="black")
+            f.add_artist(circ)
+        elif X_restraint_array[ii] == 0 and Y_restraint_array[ii] == 1:
+            circ = plt.Circle((temp_x, temp_y - 0.75 * const), 0.75 * const, color="black")
+            f.add_artist(circ)
+
+
+
+    canvas = FigureCanvasTkAgg(fig, canvas_4_1)
+    canvas.get_tk_widget().place(relwidth=0.9, relheight=0.9, relx=0.05, rely=0.1)
+    canvas.draw()
+    f.axis("scaled")  # plots to actual scale
+    f.axis("off")  # turns off plot outlines and axes
+    plt.show()
+
+
+
+
+def save_member_data():
+    for i in range(int(input_number_of_members_entry.get())):
+        member.append(i + 1)
+    for start_joint_entry in start_joint_temp_list:
+        start_joint.append(start_joint_entry.get())
+    for end_joint_entry in end_joint_temp_list:
+        end_joint.append(end_joint_entry.get())
+    for youngs_mod_entry in youngs_mod_temp_list:
+        youngs.append(youngs_mod_entry.get())
+    for cross_s_area_entry in cross_s_area_temp_list:
+        area.append(cross_s_area_entry.get())
+
+    # entry stores as string - so convert to float
+    start_temp = []
+    end_temp = []
+    youngs_temp = []
+    area_temp = []
+
+    for i in range(len(member)):
+        start_temp.append(float(start_joint[i]))
+        end_temp.append(float(end_joint[i]))
+        youngs_temp.append(float(youngs[i]))
+        area_temp.append(float(area[i]))
+
+    # convert to numpy arrays for easy numpy operations
+    global member_array
+    global start_joint_array
+    global end_joint_array
+    global youngs_array
+    global area_array
+    global member_length_array
+    member_array = np.array(member)
+    start_joint_array = np.array(start_temp)
+    end_joint_array = np.array(end_temp)
+    youngs_array = np.array(youngs_temp)
+    area_array = np.array(area_temp)
+    print("member list: ", member_array)
+    print("start joint list: ", start_joint_array)
+    print("end joint list: ", end_joint_array)
+    print("young's modulus: ", youngs_array)
+    print("area: ", area_array)
+
+    # computation of member length
+    member_length_temp = []
+    print("X_coordinate_array", X_coordinate_array)
+    print("Y_coordinate_array", Y_coordinate_array)
+    print("end_joint_array", end_joint_array)
+    print("start_joint_array", start_joint_array)
+    for i in range(len(member_array)):
+        a = X_coordinate_array[int(end_joint_array[i]) - 1] - X_coordinate_array[int(start_joint_array[
+                                                                                         i]) - 1]
+            # convert to int because in array it is on floating point and indices must be integer
+        b = Y_coordinate_array[int(end_joint_array[i]) - 1] - Y_coordinate_array[int(start_joint_array[i]) - 1]
+        c = pow(a, 2)
+        d = pow(b, 2)
+        member_length = np.sqrt(c + d)
+        member_length_temp.append(member_length)
+
+    member_length_array = np.array(member_length_temp)
+    print("Member_length_temp: ", member_length_array)
+
+    # make an input external force properties window
+    open_new3_window = tk.Toplevel()
+    open_new3_window.title("Input External Force Properties")
+    open_new3_window.geometry("1920x1080+0+0")
+    open_new3_window.iconbitmap("CK.ico")
+    canvas_3_1 = tk.Canvas(open_new3_window)
+    canvas_3_1.place(relwidth=1, relheight=0.35, relx=0, rely=0, anchor="nw")
+    topic_3_frame = tk.Frame(canvas_3_1, bg="#6b8799")
+    topic_3_frame.place(relwidth=1, relheight=0.5, relx=0, rely=0)
+
+    topic_3_label = tk.Label(topic_3_frame, text="INPUT EXTERNAL FORCE PROPERTIES", font=("Arial Black", 25, "bold"),
+                             background="#6b8799", foreground="white", padx=20, pady=20, bd=3)
+    topic_3_label.place(relwidth=0.65, relheight=1, relx=0, rely=0, anchor="nw")
+    save_button_3 = tk.Button(topic_3_frame, text="ANALYZE WITH\nMATRIX METHOD", bg="#c1f7c1", fg="black",
+                              bd=10, font=("Arial", 16, "bold"),
+                              command=see_result)
+    save_button_3.place(relwidth=0.3, relheight=0.8, relx=0.675, rely=0.1)
+
+    label_3_frame = tk.Frame(canvas_3_1, bg="blue")
+    label_3_frame.place(relwidth=1, relheight=0.4, relx=0, rely=0.6)
+    tk.Label(label_3_frame, text="Force No.", font=("Helvetica", 18, "italic", "bold"), background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=0, padx=5, pady=20)
+
+    tk.Label(label_3_frame, text="Acts on Joint", font=("Helvetica", 18, "italic", "bold"), background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=1, padx=80, pady=10)
+
+    tk.Label(label_3_frame, text="Force Value ", font=("Helvetica", 18, "italic", "bold"), background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=2, padx=60, pady=10)
+
+    tk.Label(label_3_frame, text="Direction:\nPositive X", font=("Helvetica", 18, "italic", "bold"),
+             background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=5, bd=3).grid(row=0, column=3, padx=25, pady=0)
+
+    tk.Label(label_3_frame, text="Direction:\nPositive Y", font=("Helvetica", 18, "italic", "bold"),
+             background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=5, bd=3).grid(row=0, column=4, padx=35, pady=0)
+
+    canvas_3 = tk.Canvas(open_new3_window, bg="#9ea2a3")
+    canvas_3.place(relwidth=1, relheight=0.65, relx=0, rely=0.35, anchor="nw")
+    scrollbar_3 = tk.Scrollbar(open_new3_window, orient="vertical", command=canvas_3.yview)
+    scrollbar_frame_3 = tk.Frame(canvas_3, bg="#9ea2a3")
+
+    scrollbar_frame_3.bind(
+        "<Configure>",
+        lambda e: canvas_3.configure(
+            scrollregion=canvas_3.bbox("all")
+        )
+    )
+
+    canvas_3.create_window((0, 0), window=scrollbar_frame_3, anchor="nw")
+    canvas_3.configure(yscrollcommand=scrollbar_3.set)
+
+    add_rely = 0.1
+    for i in range(int(input_number_of_resolved_forces_entry.get())):
+        var3.append(tk.IntVar())
+        var4.append(tk.IntVar())
+        tk.Label(scrollbar_frame_3, font=("Helvetica", 15, "bold"), padx=20, pady=20, bd=8, foreground="#383c45",
+                 background="white", relief="raised", text=str(i + 1) + " .").grid(row=i, column=0, padx=50, pady=20)
+        # use full identifier foreground and background for ttk
+
+        force_joint_entry = tk.Entry(scrollbar_frame_3, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                     foreground="black",
+                                     background="light yellow", bd=3)  # justify centers the inputs
+        force_joint_entry.grid(row=i, column=1, padx=10, pady=10, ipady=10)  # ipady increases height of box
+        force_joint_temp_list.append(force_joint_entry)
+
+        force_value_entry = tk.Entry(scrollbar_frame_3, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                     foreground="black",
+                                     background="light yellow", bd=3)
+        force_value_entry.grid(row=i, column=2, padx=10, pady=10, ipady=10)
+        force_value_temp_list.append(force_value_entry)
+
+        tk.Checkbutton(scrollbar_frame_3, variable=var3[i], bg="white", fg="black").grid(row=i, column=3, padx=50,
+                                                                                         pady=28, ipadx=30, ipady=10,
+                                                                                         sticky=N + S + E + W)
+                                                                                            # deselects by default
+        tk.Checkbutton(scrollbar_frame_3, variable=var4[i], bg="white", fg="black").grid(row=i, column=4, padx=80,
+                                                                                         pady=28, ipadx=30, ipady=10,
+                                                                                         sticky=N + S + E + W)
+
+    scrollbar_3.pack(side="right", fill="y", anchor="nw")
+
+
+def save_joint_data():
+    for i in range(int(input_number_of_joints_entry.get())):
+        j_n_vec.append(i + 1)
+        x_res_vec.append(var[i].get())
+        y_res_vec.append(var2[i].get())
+    for X_entry in x_coor_temp_list:
+        x_co_vec.append(X_entry.get())
+    for Y_entry in y_coor_temp_list:
+        y_co_vec.append(Y_entry.get())
+
+    print("Joint No. vector", j_n_vec)
+    print("X-Coordinate vector", x_co_vec)
+    print("Y-Coordinate vector", y_co_vec)
+    print("X-Restraint vector", x_res_vec)
+    print("Y-Restraint vector", y_res_vec)
+
+    X_coor = []
+    Y_coor = []
+
+    for i in range(len(j_n_vec)):
+        X_coor.append(float(x_co_vec[i]))
+        Y_coor.append(float(y_co_vec[i]))
+
+    global Joint_array
+    global X_coordinate_array
+    global Y_coordinate_array
+    global X_restraint_array
+    global Y_restraint_array
+    Joint_array = np.array(j_n_vec)
+    X_coordinate_array = np.array(X_coor)
+    Y_coordinate_array = np.array(Y_coor)
+    X_restraint_array = np.array(x_res_vec)
+    Y_restraint_array = np.array(y_res_vec)
+
+    print("  Joint_array", Joint_array, "\n", "X_coordinate", X_coordinate_array, "\n", "Y_coordinate",
+          Y_coordinate_array, "\n", "X_restraint", X_restraint_array, "\n", "Y_restraint", Y_restraint_array, "\n")
+
+    ## assigning code numbers to the joints
+
+    attached = []
+    for c in range(len(j_n_vec)):
+        attached.append(x_res_vec[c])
+        attached.append(y_res_vec[c])
+
+    print("attached: ", attached)
+    A = []
+
+    for i in range(len(attached)):
+        a = 0
+        if attached[i] == 1:
+            A.append(a)
+        else:
+            a = a + 1
+            A.append(a)
+    print("code index boolean: ", A)
+
+    global B
+    global B_array
+    B = []
+    a = 0
+    for i in range(len(attached)):
+        if attached[i] == 1:
+            B.append(a)
+        else:
+            a = a + 1
+            B.append(a)
+    print("code index added: ", B)
+
+    ie = []
+    for i in range(len(A)):
+        if A[i] == 0:
+            x = i
+            ie.append(x)
+
+    print("index extract: ", ie)
+    A_array = np.array(A)
+    B_array = np.array(B)
+    last_max_index = np.max(np.nonzero(A_array))
+    global NDOF
+    NDOF = B[last_max_index]
+    print("last_max_index: ", last_max_index)
+
+    for i in range(len(ie)):
+        B_array[ie[i]] = B_array[last_max_index] + i + 1
+
+    print("code number array: ", B_array)
+    global split
+    split = np.array_split(B_array, len(j_n_vec))  # splits array into n splits
+    print("code numbers per joint: is ",
+          split)  # split is the array of code numbers according to joint number respectively
+
+    # make an input member properties window
+    open_new2_window = tk.Toplevel()
+    open_new2_window.title("Input Member Properties")
+    open_new2_window.geometry("1920x1080+0+0")
+    open_new2_window.iconbitmap("CK.ico")
+    canvas_2_1 = tk.Canvas(open_new2_window)
+    canvas_2_1.place(relwidth=1, relheight=0.3, relx=0, rely=0, anchor="nw")
+    topic_2_frame = tk.Frame(canvas_2_1, bg="#6b8799")
+    topic_2_frame.place(relwidth=1, relheight=1, relx=0, rely=0)
+    topic_2_label = tk.Label(topic_2_frame, text="INPUT MEMBER PROPERTIES", font=("Arial Black", 30, "bold"),
+                             background="#6b8799", foreground="white", padx=20, pady=20, bd=3)
+    topic_2_label.place(relwidth=0.7, relheight=0.6, relx=0, rely=0, anchor="nw")
+    topic_3_frame = tk.Frame(canvas_2_1, bg="blue")
+    topic_3_frame.place(relwidth=1, relheight=0.4, relx=0, rely=0.6, anchor="nw")
+    tk.Label(topic_3_frame, text="Member No.", font=("Helvetica", 18, "italic", "bold"), background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=0, padx=5, pady=20)
+
+    tk.Label(topic_3_frame, text="Starts at Joint no. ", font=("Helvetica", 18, "italic", "bold"),
+             background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=1, padx=25, pady=20)
+
+    tk.Label(topic_3_frame, text="Ends at Joint no.", font=("Helvetica", 18, "italic", "bold"),
+             background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=2, padx=60, pady=20)
+
+    tk.Label(topic_3_frame, text="Young's Modulus", font=("Helvetica", 18, "italic", "bold"), background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=3, padx=20, pady=20)
+
+    tk.Label(topic_3_frame, text="Cross Section Area", font=("Helvetica", 18, "italic", "bold"),
+             background="#6edcf5",
+             foreground="black", relief="raised", padx=20, pady=20, bd=3).grid(row=0, column=4, padx=60, pady=20)
+
+    # make canvas for buttom input window
+    canvas_2 = tk.Canvas(open_new2_window, bg="#9ea2a3")
+    canvas_2.place(relwidth=1, relheight=0.7, relx=0, rely=0.3, anchor="nw")
+    scrollbar_2 = tk.Scrollbar(open_new2_window, orient="vertical", command=canvas_2.yview)
+    scrollbar_2_h = tk.Scrollbar(open_new2_window, orient="horizontal", command=canvas_2.xview)
+    scrollbar_frame_2 = tk.Frame(canvas_2, bg="#9ea2a3")
+
+    scrollbar_frame_2.bind(
+        "<Configure>",
+        lambda e: canvas_2.configure(
+            scrollregion=canvas_2.bbox("all")
+        )
+    )
+
+    canvas_2.create_window((0, 0), window=scrollbar_frame_2, anchor="nw")
+    canvas_2.configure(yscrollcommand=scrollbar_2.set)
+    canvas_2.configure(xscrollcommand=scrollbar_2_h.set)
+
+
+
+    add_rely = 0.1
+    for i in range(int(input_number_of_members_entry.get())):
+        tk.Label(scrollbar_frame_2, font=("Helvetica", 15, "bold"), padx=20, pady=20, bd=8, foreground="#383c45",
+                 background="white", relief="raised", text=str(i + 1) + " .").grid(row=i + 1, column=0, padx=50,
+                                                                                   pady=20)
+        # use full identifier foreground and background for ttk
+
+        start_joint_entry = tk.Entry(scrollbar_frame_2, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                     foreground="black", background="light yellow", bd=3)
+        start_joint_entry.grid(row=i + 1, column=1, padx=10, pady=10, ipady=10)  # ipady increases height of box
+        start_joint_temp_list.append(start_joint_entry)
+
+        end_joint_entry = tk.Entry(scrollbar_frame_2, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                   foreground="black", background="light yellow", bd=3)
+        end_joint_entry.grid(row=i + 1, column=2, padx=10, pady=10, ipady=10)
+        end_joint_temp_list.append(end_joint_entry)
+
+        youngs_mod_entry = tk.Entry(scrollbar_frame_2, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                    foreground="black", background="light yellow", bd=3)
+        youngs_mod_entry.grid(row=i + 1, column=3, padx=10, pady=10, ipady=10)
+        youngs_mod_temp_list.append(youngs_mod_entry)
+
+        cross_s_area_entry = tk.Entry(scrollbar_frame_2, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                                      foreground="black", background="light yellow", bd=3)
+        cross_s_area_entry.grid(row=i + 1, column=4, padx=10, pady=10, ipady=10)
+        cross_s_area_temp_list.append(cross_s_area_entry)
+
+    save_button_2 = tk.Button(topic_2_frame, text="PROCEED TO FORCE" + "\n" + "PROPERTIES", bg="#c1f7c1", fg="black",
+                              bd=10, font=("Arial black", 16, "bold"),
+                              command=save_member_data)
+    save_button_2.place(relwidth=0.3, relheight=0.5, relx=0.65, rely=0.05)
+
+    scrollbar_2.pack(side="right", fill="y", anchor="nw")
+    scrollbar_2_h.pack(side="bottom", fill="x", anchor="nw")
+
+
+def input_joints():
+    if not input_number_of_joints_entry.get() or not input_number_of_members_entry.get() \
+            or not input_number_of_resolved_forces_entry.get():  # to check if the input fields are empty
+        tk.messagebox.showerror("INPUT MISSING!", "Some or all of the inputs are missing.")
+
+    else:
+        # make an input joint properties window
+        global noj, nom, nof
+        noj = int(input_number_of_joints_entry.get())
+        nom = int(input_number_of_members_entry.get())
+        nof = int(input_number_of_resolved_forces_entry.get())
+        open_new_window = tk.Toplevel()
+        open_new_window.title("Input Joint Properties")
+        open_new_window.geometry("1920x1080+0+0")
+        open_new_window.iconbitmap("CK.ico")
+        canvas_1 = tk.Canvas(open_new_window)
+        canvas_1.place(relwidth=1, relheight=0.35, relx=0, rely=0, anchor="nw")
+        topic_frame = tk.Frame(canvas_1, bg="#6b8799")
+        topic_frame.place(relwidth=1, relheight=0.5, relx=0, rely=0)
+        topic_label = tk.Label(topic_frame, text="INPUT JOINT PROPERTIES", font=("Arial Black", 30, "bold"),
+                               background="#6b8799", foreground="white", padx=20, pady=20, bd=3)
+        topic_label.place(relwidth=0.7, relheight=1, relx=0, rely=0, anchor="nw")
+
+        save_button = tk.Button(topic_frame, text="PROCEED TO MEMBER" + "\n" + "PROPERTIES", bg="#c1f7c1", fg="black",
+                                bd=10, font=("Arial black", 16, "bold"), command=save_joint_data)
+        save_button.place(relwidth=0.3, relheight=0.8, relx=0.65, rely=0.1)
+
+        label_frame = tk.Frame(canvas_1, bg="blue")
+        label_frame.place(relwidth=1, relheight=0.5, relx=0, rely=0.5, anchor="nw")
+
+        tk.Label(label_frame, text="Joint No.", font=("Helvetica", 18, "italic", "bold"), background="#c8f1fa",
+                 foreground="black", relief="raised", padx=5, pady=30, bd=3).grid(row=0, column=0, padx=7, pady=10)
+
+        tk.Label(label_frame, text="X-Coordinate", font=("Helvetica", 18, "italic", "bold"), background="#c8f1fa",
+                 foreground="black", relief="raised", padx=20, pady=30, bd=3).grid(row=0, column=1, padx=65, pady=10)
+
+        tk.Label(label_frame, text="Y-Coordinate", font=("Helvetica", 18, "italic", "bold"), background="#c8f1fa",
+                 foreground="black", relief="raised", padx=20, pady=30, bd=3).grid(row=0, column=2, padx=70, pady=10)
+
+        tk.Label(label_frame, text="X-Restraint", font=("Helvetica", 18, "italic", "bold"), background="#c8f1fa",
+                 foreground="black", relief="raised", padx=20, pady=30, bd=3).grid(row=0, column=3, padx=35, pady=10)
+
+        tk.Label(label_frame, text="Y-Restraint", font=("Helvetica", 18, "italic", "bold"), background="#c8f1fa",
+                 foreground="black", relief="raised", padx=20, pady=30, bd=3).grid(row=0, column=4, padx=0, pady=10)
+
+        canvas = tk.Canvas(open_new_window, bg="#9ea2a3")
+        canvas.place(relwidth=1, relheight=0.65, relx=0, rely=0.30, anchor="nw")
+        scrollbar = tk.Scrollbar(open_new_window, orient="vertical", command=canvas.yview)
+        scrollbar_frame = tk.Frame(canvas, bg="#9ea2a3")
+
+        scrollbar_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollbar_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        add_rely = 0.1
+        for i in range(int(input_number_of_joints_entry.get())):
+            var.append(tk.IntVar())
+            var2.append(tk.IntVar())
+            tk.Label(scrollbar_frame, font=("Helvetica", 15, "bold"), padx=20, pady=20, bd=8, foreground="#383c45",
+                     background="white", relief="raised", text=str(i + 1) + " .").grid(row=i, column=0, padx=20,
+                                                                                       pady=20)
+            # use full identifier foreground and background for ttk
+
+            X_entry = tk.Entry(scrollbar_frame, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                               foreground="black", background="light yellow",
+                               bd=3)  # width allows to change the width of entry box
+            X_entry.grid(row=i, column=1, padx=10, pady=10, ipady=10)  # ipady increases height of box
+            x_coor_temp_list.append(X_entry)
+
+            Y_entry = tk.Entry(scrollbar_frame, font=("Helvetica", 20, "italic", "bold"), justify="center",
+                               foreground="black", background="light yellow", bd=3)
+            Y_entry.grid(row=i, column=2, padx=10, pady=10, ipady=10)
+            y_coor_temp_list.append(Y_entry)
+
+            tk.Checkbutton(scrollbar_frame, variable=var[i], bg="white", fg="black").grid(row=i, column=3, padx=80,
+                                                                                          pady=28, ipadx=30,
+                                                                                          ipady=10,
+                                                                                          sticky=N + S + E + W)
+                                                                                            # deselects by default
+            tk.Checkbutton(scrollbar_frame, variable=var2[i], bg="white", fg="black").grid(row=i, column=4, padx=50,
+                                                                                           pady=28, ipadx=30,
+                                                                                           ipady=10,
+                                                                                           sticky=N + S + E + W)
+
+        scrollbar.pack(side="right", fill="y", anchor="nw")
+
+
+frame = tk.Frame(root, bg="light gray")
+frame.place(relwidth=1, relheight=1, relx=0, rely=0, anchor="nw")
+
+topic_label = tk.Label(frame, text="MATRIX ANALYSIS OF PLANE TRUSS", justify="center", bg="#d1f7ff", fg="black",
+                       font=("Arial black", 25, "bold"), padx=20, pady=20, bd=3, relief="raised")
+topic_label.place(relwidth=1, relheight=0.15, relx=0, rely=0)
+
+input_number_of_joints_label = tk.Label(frame, text="Number of Joints:", justify="center", bg="white", fg="blue",
+                                        font=("Helvetica", 20, "bold"), padx=20, pady=20, bd=3, relief="raised")
+input_number_of_joints_label.place(relwidth=0.2, relheight=0.1, relx=0.05, rely=0.2)
+
+input_number_of_joints_entry = tk.Entry(frame, font=("Helvetica", 30, "italic", "bold"), justify="center", fg="black",
+                                        bg="light yellow", bd=8)
+input_number_of_joints_entry.place(relwidth=0.1, relheight=0.1, relx=0.305, rely=0.2)
+
+input_number_of_members_label = tk.Label(frame, text="Number of Members:", justify="center", bg="white", fg="blue",
+                                         font=("Helvetica", 20, "bold"), padx=20, pady=20, bd=3, relief="raised")
+input_number_of_members_label.place(relwidth=0.2, relheight=0.1, relx=0.05, rely=0.40)
+
+input_number_of_members_entry = tk.Entry(frame, font=("Helvetica", 30, "italic", "bold"), justify="center", fg="black",
+                                         bg="light yellow", bd=8)
+input_number_of_members_entry.place(relwidth=0.1, relheight=0.1, relx=0.305, rely=0.40)
+
+input_number_of_resolved_forces_label = tk.Label(frame, text="Number of Resolved Forces:", justify="center", bg="white",
+                                                 fg="blue", font=("Helvetica", 20, "bold"), padx=20, pady=20, bd=3,
+                                                 relief="raised")
+input_number_of_resolved_forces_label.place(relwidth=0.2, relheight=0.1, relx=0.05, rely=0.60)
+
+input_number_of_resolved_forces_entry = tk.Entry(frame, font=("Helvetica", 30, "italic", "bold"), justify="center",
+                                                 fg="black", bg="light yellow", bd=8)
+input_number_of_resolved_forces_entry.place(relwidth=0.1, relheight=0.1, relx=0.305, rely=0.60)
+
+input_length_unit_label = tk.Label(frame, text="Unit of Length:", justify="center", bg="white", fg="blue",
+                                   font=("Helvetica", 20, "bold"), padx=20, pady=20, bd=3, relief="raised")
+input_length_unit_label.place(relwidth=0.2, relheight=0.1, relx=0.5, rely=0.3)
+
+input_length_unit_label_entry = tk.Entry(frame, font=("Helvetica", 30, "italic", "bold"), justify="center", fg="black",
+                                         bg="light yellow", bd=8)
+input_length_unit_label_entry.place(relwidth=0.20, relheight=0.1, relx=0.75, rely=0.3)
+
+input_force_unit_label = tk.Label(frame, text="Unit of Force:", justify="center", bg="white", fg="blue",
+                                  font=("Helvetica", 20, "bold"), padx=20, pady=20, bd=3, relief="raised")
+input_force_unit_label.place(relwidth=0.2, relheight=0.1, relx=0.5, rely=0.5)
+
+input_force_unit_label_entry = tk.Entry(frame, font=("Helvetica", 30, "italic", "bold"), justify="center", fg="black",
+                                        bg="light yellow", bd=8)
+input_force_unit_label_entry.place(relwidth=0.20, relheight=0.1, relx=0.75, rely=0.5)
+
+input_properties_button = tk.Button(frame, text="Input Properties", bg="#c1f7c1", fg="black", bd=12,
+                                    command=input_joints, font=("Arial", 30, "bold"))
+input_properties_button.place(relwidth=0.30, relheight=0.15, relx=0.35, rely=0.75)
+
+root.mainloop()
+
+
+# ------------------------------------------------END GUI  ----------------------------------------------------------#
+
+# ___________________________________________________________________________________________________________________##
+
+
+
